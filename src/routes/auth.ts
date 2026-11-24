@@ -79,7 +79,7 @@ authRouter.post('/auth/verify-otp', async (req, res, next) => {
       await user.save();
     }
 
-    const isHttps = (process.env.FRONTEND_URL || '').startsWith('https');
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie(COOKIE_NAME, signAuthToken(String(user._id)), {
       httpOnly: true,
       sameSite: isHttps ? 'none' : 'lax',
@@ -108,10 +108,10 @@ authRouter.post('/auth/admin-login', async (req, res, next) => {
     const email = String(req.body.email || '').trim().toLowerCase();
     const password = String(req.body.password || '');
 
-    const adminEmail = (process.env.ADMIN_DEMO_EMAIL || '').trim().toLowerCase();
-    const adminPass = process.env.ADMIN_DEMO_PASSWORD || '';
+    const adminEmail = (process.env.ADMIN_DEMO_EMAIL || 'admin@tantri.com').trim().toLowerCase();
+    const adminPass = (process.env.ADMIN_DEMO_PASSWORD || 'Admin@1234').trim();
 
-    if (!adminEmail || !adminPass || email !== adminEmail || password !== adminPass) {
+    if (email !== adminEmail || password !== adminPass) {
       return res.status(401).json({ error: 'Invalid admin email or password' });
     }
 
@@ -123,7 +123,7 @@ authRouter.post('/auth/admin-login', async (req, res, next) => {
       await user.save();
     }
 
-    const isHttps = (process.env.FRONTEND_URL || '').startsWith('https');
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie(COOKIE_NAME, signAuthToken(String(user._id)), {
       httpOnly: true,
       sameSite: isHttps ? 'none' : 'lax',

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { requireUser, type AuthRequest } from '../lib/auth';
 import { calcCoupon, getPayments, shippingFor } from '../lib/store-helpers';
 import { Order, Product, User } from '../models';
@@ -75,7 +76,12 @@ ordersRouter.post('/', requireUser, async (req: AuthRequest, res, next) => {
     let subtotal = 0;
 
     for (const it of items) {
-      const p = await Product.findOne({ _id: it.id, active: true });
+      const idStr = String(it.id || '');
+      const p = mongoose.Types.ObjectId.isValid(idStr)
+        ? await Product.findOne({ _id: idStr, active: true })
+        : it.slug
+          ? await Product.findOne({ slug: String(it.slug), active: true })
+          : null;
       const qty = Math.max(1, Math.min(Number(it.qty || 1), 20));
       if (!p) return res.status(400).json({ error: 'A product in your cart is no longer available' });
       if (p.stock < qty) return res.status(400).json({ error: `Only ${p.stock} left of "${p.name}"` });
