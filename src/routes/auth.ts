@@ -103,6 +103,50 @@ authRouter.post('/auth/verify-otp', async (req, res, next) => {
   }
 });
 
+authRouter.post('/auth/admin-login', async (req, res, next) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+
+    const adminEmail = (process.env.ADMIN_DEMO_EMAIL || '').trim().toLowerCase();
+    const adminPass = process.env.ADMIN_DEMO_PASSWORD || '';
+
+    if (!adminEmail || !adminPass || email !== adminEmail || password !== adminPass) {
+      return res.status(401).json({ error: 'Invalid admin email or password' });
+    }
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({ email, role: 'admin', name: 'Admin' });
+    } else if (user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+    }
+
+    const isHttps = (process.env.FRONTEND_URL || '').startsWith('https');
+    res.cookie(COOKIE_NAME, signAuthToken(String(user._id)), {
+      httpOnly: true,
+      sameSite: isHttps ? 'none' : 'lax',
+      secure: isHttps,
+      maxAge: 14 * 86400 * 1000,
+      path: '/',
+    });
+
+    res.json({
+      ok: true,
+      user: {
+        id: String(user._id),
+        email: user.email,
+        name: user.name || '',
+        phone: user.phone || '',
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 authRouter.post('/auth/logout', (_req, res) => {
   res.clearCookie(COOKIE_NAME, { path: '/' });
   res.json({ ok: true });
